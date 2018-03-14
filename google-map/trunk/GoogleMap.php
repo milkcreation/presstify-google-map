@@ -3,7 +3,7 @@
 Plugin Name: Google map
 Plugin URI: http://presstify.com/plugins/google-map
 Description: Interface de création de carte gmap
-Version: 1.1.443
+Version: 1.0.0
 Author: Milkcreation
 Author URI: http://milkcreation.fr
 */

@@ -1,6 +1,6 @@
 {
   "name": "presstify-plugins/google-map",
-  "description": "PresstiFy Plugin Cpanel",
+  "description": "PresstiFy Plugin GoogleMap",
   "type": "presstify-plugins",
   "keywords": ["presstify", "plugins", "wordpress", "google-map"],
   "homepage": "http://svn.milkcreation.fr/presstify-plugins/google-map",

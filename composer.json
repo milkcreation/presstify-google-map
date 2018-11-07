@@ -1,9 +1,16 @@
 {
   "name": "presstify-plugins/google-map",
-  "description": "PresstiFy Plugin GoogleMap",
-  "type": "presstify-plugins",
-  "keywords": ["presstify", "plugins", "wordpress", "google-map"],
-  "homepage": "http://svn.milkcreation.fr/presstify-plugins/google-map",
+  "description": "Carte interactive Google Map.",
+  "type": "presstify-plugin",
+  "keywords": [
+    "presstify",
+    "plugins",
+    "wordpress",
+    "google",
+    "map"
+  ],
+  "homepage": "https://svn.milkcreation.fr/presstify-plugins/google-map",
+  "time": "2018-11-07",
   "license": "proprietary",
   "authors": [
     {
@@ -12,16 +19,30 @@
       "role": "Developper"
     }
   ],
-  "config" : {
-    "preferred-install": "dist",
-    "sort-packages": true,
-    "optimize-autoloader": true
+  "repositories": [
+    {
+      "type": "composer",
+      "url": "http://composer.tigreblanc.fr/presstify/"
+    }
+  ],
+  "require": {
+    "composer/installers": "~1.0",
+    "presstify/framework": ">=1.4"
   },
   "autoload": {
+    "files": [
+      "helpers.php"
+    ],
     "psr-4": {
       "tiFy\\Plugins\\GoogleMap\\": ""
     }
   },
   "minimum-stability": "dev",
-  "prefer-stable": true
+  "prefer-stable": true,
+  "config": {
+    "optimize-autoloader": true,
+    "preferred-install": "dist",
+    "secure-http": false,
+    "sort-packages": true
+  }
 }

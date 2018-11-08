@@ -89,5 +89,11 @@ return [
             // @see https://developers.google.com/maps/documentation/javascript/reference/control?hl=fr#MapTypeControlStyle
             'style'      => 'google.maps.MapTypeControlStyle.DROPDOWN_MENU'
         ]
-    ]
+    ],
+
+    /**
+     * Liste des attributs HTML de la balise.
+     * @var array
+     */
+    'attrs' => []
 ];

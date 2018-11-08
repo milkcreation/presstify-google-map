@@ -11,6 +11,7 @@
 
 namespace tiFy\Plugins\GoogleMap;
 
+use tiFy\Contracts\Kernel\Assets;
 use tiFy\Contracts\View\ViewController;
 use tiFy\Contracts\View\ViewEngine;
 use tiFy\Kernel\Params\ParamsBagTrait;
@@ -21,8 +22,8 @@ use tiFy\Kernel\Params\ParamsBagTrait;
  *
  * Activation :
  * ---------------------------------------------------------------------------------------------------------------------
- * Dans config/app.php ajouter \tiFy\Plugins\GoogleMap\GoogleMap à la liste des fournisseurs de services chargés automatiquement par l'application.
- * ex.
+ * Dans config/app.php ajouter \tiFy\Plugins\GoogleMap\GoogleMap à la liste des fournisseurs de services chargés
+ *     automatiquement par l'application. ex.
  * <?php
  * ...
  * use tiFy\Plugins\GoogleMap\GoogleMap;
@@ -57,18 +58,7 @@ class GoogleMap
             'init',
             function () {
                 wp_register_style('GoogleMap', $this->resourcesUrl('assets/css/styles.css'), [], 181107);
-
-                wp_register_script(
-                    'gmap',
-                    '//maps.googleapis.com/maps/api/js?key=' . config('google-map.apiKey', ''),
-                    [],
-                    'v3',
-                    false
-                );
-
-                wp_register_script('GoogleMap', $this->resourcesUrl('assets/js/script.js'), ['gmap'], 181107, true);
-
-                $this->parse(config('google-map', []));
+                wp_register_script('GoogleMap', $this->resourcesUrl('assets/js/scripts.js'), [], 181107, true);
             },
             999999
         );
@@ -81,16 +71,56 @@ class GoogleMap
      */
     public function __toString()
     {
-        return (string) $this->render();
+        return (string)$this->render();
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function parse($attrs = [])
+    {
+        $this->attributes = array_merge(
+            $this->attributes,
+            $this->defaults(),
+            $attrs
+        );
+
+        if (!$this->get('attrs.id')) :
+            $this->set('attrs.id', 'GoogleMap');
+        endif;
+
+        if (!$this->get('attrs.class')) :
+            $this->set('attrs.class', '');
+        endif;
+
+        $this->set('attrs.data-control', 'google-map');
+
+        $this->set('element', $this->get('attrs.id'));
+
+        /** @var Assets $assets */
+        $assets = app('assets');
+        $assets->setDataJs(
+            'google-map',
+            [
+                'apiKey'       => $this->get('apiKey'),
+                'element'      => $this->get('element'),
+                'geocode'      => $this->get('geocode'),
+                'markerOptions' => $this->get('markerOptions'),
+                'mapOptions'   => $this->get('mapOptions'),
+            ],
+            is_admin() ? 'admin' : 'user'
+        );
     }
 
     /**
      * Affichage.
      *
-     * @return
+     * @return ViewController
      */
     public function render()
     {
+        $this->parse(config('google-map', []));
+
         return $this->viewer('google-map', $this->all());
     }
 

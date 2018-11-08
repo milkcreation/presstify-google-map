@@ -1,153 +1,194 @@
 <?php
-/*
-Plugin Name: Google map
-Plugin URI: http://presstify.com/plugins/google-map
-Description: Interface de création de carte gmap
-Version: 1.0.0
-Author: Milkcreation
-Author URI: http://milkcreation.fr
-*/
 
 /**
- * USAGE :
- * Recommandé :
- * Charger les dépendance de scripts :
- * wp_enqueue_style( 'tiFy_GoogleMap' );
- * wp_enqueue_script( 'tiFy_GoogleMap' );
- *
- * Depuis l'éditeur tinyMCE Wordpress :
- * [tiFy_GoogleMap]
- *
- * Dans un template :
- * <?php echo do_shortcode( '[tiFy_GoogleMap]' ); ?>
+ * @name GoogleMap
+ * @desc Extension PresstiFy de gestion de carte interactive Google Map.
+ * @author Jordy Manner <jordy@tigreblanc.fr>
+ * @package presstify-plugins/google-map
+ * @namespace tiFy\Plugins\GoogleMap
+ * @version 2.0.0
  */
 
 namespace tiFy\Plugins\GoogleMap;
 
-class GoogleMap extends \tiFy\App\Plugin
+use tiFy\Contracts\Kernel\Assets;
+use tiFy\Contracts\View\ViewController;
+use tiFy\Contracts\View\ViewEngine;
+use tiFy\Kernel\Params\ParamsBagTrait;
+
+/**
+ * Class GoogleMap
+ * @package tiFy\Plugins\GoogleMap
+ *
+ * Activation :
+ * ---------------------------------------------------------------------------------------------------------------------
+ * Dans config/app.php ajouter \tiFy\Plugins\GoogleMap\GoogleMap à la liste des fournisseurs de services chargés
+ *     automatiquement par l'application. ex.
+ * <?php
+ * ...
+ * use tiFy\Plugins\GoogleMap\GoogleMap;
+ * ...
+ *
+ * return [
+ *      ...
+ *      'providers' => [
+ *          ...
+ *          GoogleMap::class
+ *          ...
+ *      ]
+ * ];
+ *
+ * Configuration :
+ * ---------------------------------------------------------------------------------------------------------------------
+ * Dans le dossier de config, créer le fichier google-map.php
+ * @see /vendor/presstify-plugins/google-map/Resources/config/google-map.php Exemple de configuration
+ */
+class GoogleMap
 {
+    use ParamsBagTrait;
+
     /**
-     * Lancement à l'initialisation de la classe
+     * CONSTRUCTEUR.
      *
      * @return void
      */
-    public function tFyAppOnInit()
+    public function __construct()
     {
-        $this->appAddAction('init');
+        add_action(
+            'init',
+            function () {
+                wp_register_style('GoogleMap', $this->resourcesUrl('assets/css/styles.css'), [], 181107);
+                wp_register_script('GoogleMap', $this->resourcesUrl('assets/js/scripts.js'), [], 181107, true);
+            },
+            999999
+        );
     }
 
-    /* = DECLENCHEURS = */
-    /** == Initialisation globale == */
-    final public function init()
+    /**
+     * Résolution de sortie du contrôleur au format chaîne de caractères.
+     *
+     * @return string
+     */
+    public function __toString()
     {
-        // Déclaration du shortcode
-        add_shortcode('tiFy_GoogleMap', [$this, 'add_shortcode']);
-
-        // Déclaration
-        wp_register_style('tiFy_GoogleMap',
-            self::tFyAppUrl() . '/GoogleMap.css', [], 'v3', false);
-        wp_register_script('tiFy_GoogleMap',
-            '//maps.googleapis.com/maps/api/js?key=' . self::tFyAppConfig('ApiKey'),
-            [], 'v3', false);
+        return (string)$this->render();
     }
 
-    /** == Déclaration du shortcode == **/
-    final public function add_shortcode($atts = [])
+    /**
+     * {@inheritdoc}
+     */
+    public function parse($attrs = [])
     {
-        return self::display();
+        $this->attributes = array_merge(
+            $this->attributes,
+            $this->defaults(),
+            $attrs
+        );
+
+        if (!$this->get('attrs.id')) :
+            $this->set('attrs.id', 'GoogleMap');
+        endif;
+
+        if (!$this->get('attrs.class')) :
+            $this->set('attrs.class', '');
+        endif;
+
+        $this->set('attrs.data-control', 'google-map');
+
+        $this->set('element', $this->get('attrs.id'));
+
+        /** @var Assets $assets */
+        $assets = app('assets');
+        $assets->setDataJs(
+            'google-map',
+            [
+                'apiKey'       => $this->get('apiKey'),
+                'element'      => $this->get('element'),
+                'geocode'      => $this->get('geocode'),
+                'markerOptions' => $this->get('markerOptions'),
+                'mapOptions'   => $this->get('mapOptions'),
+            ],
+            is_admin() ? 'admin' : 'user'
+        );
     }
 
-    /* = CONTROLEURS = */
-    /** == Affichage de la Google Map == **/
-    final public static function display()
+    /**
+     * Affichage.
+     *
+     * @return ViewController
+     */
+    public function render()
     {
-        // Mise en file des scripts
-        if ( ! wp_style_is('tiFy_GoogleMap')) {
-            wp_enqueue_style('tiFy_GoogleMap');
-        }
+        $this->parse(config('google-map', []));
 
-        if ( ! wp_script_is('tiFy_GoogleMap')) {
-            wp_enqueue_script('tiFy_GoogleMap');
-        }
+        return $this->viewer('google-map', $this->all());
+    }
 
-        $wp_footer = function () {
-            $MapOptions         = wp_parse_args(self::tFyAppConfig('MapOptions'),
-                self::tFyAppConfigDefault('MapOptions'));
-            $litteralMapOpts    = [
-                'fullscreenControlOptions',
-                'mapTypeControlOptions',
-                'panControlOptions',
-                'rotateControlOptions',
-                'scaleControlOptions',
-                'streetViewControlOptions',
-                'styles',
-                'zoomControlOptions',
-            ];
-            $MarkerOptions      = self::tFyAppConfig('MarkerOptions');
-            $litteralMarkerOpts = [];
+    /**
+     * Récupération du chemin absolu vers une ressource.
+     *
+     * @param string $path Chemin relatif vers un sous élément.
+     *
+     * @return string
+     */
+    public function resourcesDir($path = '')
+    {
+        $path = '/Resources/' . ltrim($path, '/');
 
-            ?>
-            <script type="text/javascript">/* <![CDATA[ */
-                google.maps.event.addDomListener(window, 'load', tiFyGoogleMapInit);
+        return file_exists(__DIR__ . $path) ? __DIR__ . $path : '';
+    }
 
-                function tiFyGoogleMapInit() {
-                    // INITIALISATION DE LA CARTE
-                    /// Options de la carte
-                    var mapOptions = {
-                    <?php foreach( (array)$MapOptions as $k => $v ) : ?>
-                    <?php echo $k;?>: <?php echo ! in_array($k,
-                    $litteralMapOpts) ? json_encode($v) : /* mode littéral */
-                    $v;?>,
-                    <?php endforeach;?>
+    /**
+     * Récupération de l'url absolue vers une ressource.
+     *
+     * @param string $path Chemin relatif vers un sous élément.
+     *
+     * @return string
+     */
+    public function resourcesUrl($path = '')
+    {
+        $cinfo = class_info($this);
+        $path = '/Resources/' . ltrim($path, '/');
+
+        return file_exists(__DIR__ . $path) ? class_info($this)->getUrl() . $path : '';
+    }
+
+    /**
+     * Récupération d'un instance du controleur de liste des gabarits d'affichage ou d'un gabarit d'affichage.
+     * {@internal Si aucun argument n'est passé à la méthode, retourne l'instance du controleur de liste.}
+     * {@internal Sinon récupére l'instance du gabarit d'affichage et passe les variables en argument.}
+     *
+     * @param null|string view Nom de qualification du gabarit.
+     * @param array $data Liste des variables passées en argument.
+     *
+     * @return ViewController|ViewEngine
+     */
+    public function viewer($view = null, $data = [])
+    {
+        if (!app()->bound('google-map.viewer')) :
+            app()->singleton(
+                'google-map.viewer',
+                function () {
+                    $default_dir = $this->resourcesDir('views');
+
+                    return view()
+                        ->setDirectory($default_dir)
+                        ->setOverrideDir(
+                            (($override_dir = $this->get('viewer.override_dir')) && is_dir($override_dir))
+                                ? $override_dir
+                                : $default_dir
+                        );
                 }
-                    ;
+            );
+        endif;
 
-                    /// Conteneur d'accroche de la carte
-                    var mapElement = document.getElementById('tiFy_GoogleMap');
+        /** @var ViewEngine $viewer */
+        $viewer = app('google-map.viewer');
 
-                    /// Instanciation de la carte
-                    var map = new google.maps.Map(mapElement, mapOptions);
+        if (func_num_args() === 0) :
+            return $viewer;
+        endif;
 
-                    // INITIALISATION DU MARQUEUR PRINCIPAL
-                    /// Options du marqueur
-                    var markerOptions = {
-                    <?php foreach( (array)$MarkerOptions as $i => $j ) : ?>
-                    <?php echo $i;?>: <?php echo ! in_array($i,
-                    $litteralMarkerOpts) ? json_encode($j) : /* mode littéral */
-                    $j;?>,
-                    <?php endforeach;?>
-                }
-                    ;
-                    markerOptions.map = map;
-
-                    /// Positionnement du marqueur selon son adresse
-                    if (address = "<?php echo self::tFyAppConfig('Address');?>") {
-                        geocoder = new google.maps.Geocoder();
-
-                        geocoder.geocode({'address': address}, function (results, status) {
-                            if (status == google.maps.GeocoderStatus.OK) {
-                                map.setCenter(results[0].geometry.location);
-                                markerOptions.position = results[0].geometry.location
-                                var marker = new google.maps.Marker(markerOptions);
-                            }
-                        });
-                        /// Positionnement du marqueur selon sa lattitude et longitude
-                    } else {
-                        var marker = new google.maps.Marker(markerOptions);
-                    }
-
-                    // Responsive
-                    google.maps.event.addDomListener(window, "resize", function () {
-                        var center = map.getCenter();
-                        google.maps.event.trigger(map, "resize");
-                        map.setCenter(center);
-                    });
-                }
-
-                /* ]]> */</script><?php
-        };
-        add_action('wp_footer', $wp_footer, 25);
-
-        return "<div id=\"tiFy_GoogleMap\"></div>";
+        return $viewer->make("_override::{$view}", $data);
     }
 }
